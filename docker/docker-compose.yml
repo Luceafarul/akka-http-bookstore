@@ -1,6 +1,12 @@
 version: '3'
 services:
   bookstore-postgres:
-    build: ./postgres
+    image: postgres:latest
+    container_name: postges_bookstore
+    environment:
+      - "POSTGRES_USER=bookstore"
+      - "POSTGRES_PASSWORD=bookstore"
     ports:
     - "5432:5432"
+    volumes:
+    - "./postgres:/docker-entrypoint-initdb.d"
