@@ -25,22 +25,21 @@ class BookRepositorySpec extends AsyncWordSpec
 
   val bookRepository = new BookRepository(databaseService)
 
+  def testBook(categoryId: Long): Book =
+    Book(None, "Foundation", LocalDate.of(1951, 7, 17), categoryId, 17, "Isaac Asimov")
+
   "A BookRepository" should {
     "be empty at the beginning" in {
       bookRepository.all.map { books => books.size shouldBe 0 }
     }
 
     "create valid book" in {
-      categoryRepository.create(Category(None, "Sci-Fi")).flatMap { category =>
-        val book = Book(None, "Foundation", LocalDate.of(1951, 7, 17), category.id.get, 17, "Isaac Asimov")
-        bookRepository.create(book).map { book =>
-          bookRepository.all.map { books => books.size shouldBe 1 }
-          bookRepository.delete(book.id.get)
-          categoryRepository.delete(category.id.get)
-
-          book.id shouldBe defined
-        }
-      }
+      for {
+        category <- categoryRepository.create(Category(None, "Sci-Fi"))
+        book <- bookRepository.create(testBook(category.id.get))
+        _ <- bookRepository.delete(book.id.get)
+        _ <- categoryRepository.delete(category.id.get)
+      } yield book.id shouldBe defined
     }
 
     "not find a non-existent book" in {
@@ -50,24 +49,22 @@ class BookRepositorySpec extends AsyncWordSpec
     }
 
     "find an existing book" in {
-      categoryRepository.create(Category(None, "Sci-Fi")).flatMap { category =>
-        val book = Book(None, "Foundation", LocalDate.of(1951, 7, 17), category.id.get, 17, "Isaac Asimov")
-        bookRepository.create(book).flatMap { book =>
-          bookRepository.findById(book.id.get).map { foundBook =>
-            bookRepository.delete(book.id.get)
-            categoryRepository.delete(category.id.get)
-
-            foundBook shouldBe defined
-            foundBook.get shouldBe book
-          }
-        }
+      for {
+        category <- categoryRepository.create(Category(None, "Sci-Fi"))
+        book <- bookRepository.create(testBook(category.id.get))
+        foundBook <- bookRepository.findById(book.id.get)
+        _ <- bookRepository.delete(book.id.get)
+        _ <- categoryRepository.delete(category.id.get)
+      } yield {
+        foundBook shouldBe defined
+        foundBook.get shouldBe book
       }
     }
 
     "delete a book by id if it exists" in {
       for {
         category <- categoryRepository.create(Category(None, "Sci-Fi"))
-        book <- bookRepository.create(Book(None, "Foundation", LocalDate.of(1951, 7, 17), category.id.get, 17, "Isaac Asimov"))
+        book <- bookRepository.create(testBook(category.id.get))
         _ <- bookRepository.delete(book.id.get)
         books <- bookRepository.all
       } yield books should have size 0
