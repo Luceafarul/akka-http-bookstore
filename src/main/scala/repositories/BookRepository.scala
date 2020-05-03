@@ -28,8 +28,9 @@ class BookRepository(databaseService: DatabaseService) (implicit executor: Execu
         bookSearch.releaseDate.map(rd => book.releaseDate === rd),
         bookSearch.categoryId.map(cId => book.categoryId === cId),
         bookSearch.author.map(author => book.authors.like(s"%$author%"))
-      ).collect { case Some(criteria) => criteria }.reduceLeftOption(_ || _).getOrElse(true: Rep[Boolean])
+      ).collect { case Some(criteria) => criteria }.reduceLeftOption(_ && _).getOrElse(true: Rep[Boolean])
     }
+
     db.run(query.result)
   }
 }

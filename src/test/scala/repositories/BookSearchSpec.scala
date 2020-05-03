@@ -111,5 +111,21 @@ class BookSearchSpec extends AsyncWordSpec
         books should have size 2
       }
     }
+
+    "return correctly the expect books when combine search" in {
+      for {
+        Some(category) <- categoryRepository.findByTitle(techCategory.title)
+        bookSearch = BookSearch(title = Some("Akka"), categoryId = category.id)
+        books <- bookRepository.search(bookSearch)
+      } yield {
+        books should have size 1
+        books.head.title shouldBe "Akka in Action"
+      }
+
+      val bookSearch = BookSearch(title = Some("Scala"), author = Some("Wells"))
+      bookRepository.search(bookSearch).map { books =>
+        books should have size 0
+      }
+    }
   }
 }
