@@ -3,7 +3,6 @@ package models
 import java.time.LocalDate
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import converters.JsonConverters.LocalDateJsonFormat
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
 import spray.json.DefaultJsonProtocol
@@ -16,6 +15,8 @@ final case class Book(id: Option[Long],
                       authors: String)
 
 trait BookJson extends SprayJsonSupport with DefaultJsonProtocol {
+  import converters.JsonConverters.LocalDateJsonFormat
+
   implicit val bookFormat = jsonFormat6(Book.apply)
 }
 
