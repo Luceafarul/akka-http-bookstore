@@ -109,5 +109,32 @@ class BookEndpointSpec extends AsyncWordSpec
         }
       }
     }
+
+    "return all books when no query parameters are sent" in {
+      Get("/books/") ~> bookController.routes ~> check {
+        status shouldBe StatusCodes.OK
+        val books = responseAs[List[Book]]
+
+        books should have size bookFields.size
+      }
+    }
+
+    "return all books that conform to the parameters sent" in {
+      Get("/books?title=in") ~> bookController.routes ~> check {
+        status shouldBe StatusCodes.OK
+        val books = responseAs[List[Book]]
+
+        books should have size 4
+        books.map(_.title) should contain allOf("Akka in Action", "Scala in Depth", "The Time Machine", "Nineteen Eighty-Four")
+      }
+
+      Get("/books?title=in&author=Ray") ~> bookController.routes ~> check {
+        status shouldBe StatusCodes.OK
+        val books = responseAs[List[Book]]
+
+        books should have size 1
+        books.head.title shouldBe "Akka in Action"
+      }
+    }
   }
 }
