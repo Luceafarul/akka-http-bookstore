@@ -1,14 +1,15 @@
 package controllers
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.MissingHeaderRejection
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import helpers.CategorySpecHelper
-import models.{Category, CategoryJson}
+import models.{Category, CategoryJson, User}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import repositories.CategoryRepository
-import services.{ConfigService, FlywayService, PostgresService}
+import repositories.{CategoryRepository, UserRepository}
+import services.{ConfigService, FlywayService, PostgresService, TokenService}
 import web.WebApi
 
 class CategoryEndpointSpec extends AsyncWordSpec
@@ -27,7 +28,11 @@ class CategoryEndpointSpec extends AsyncWordSpec
 
   val databaseService = new PostgresService(dbUrl, dbUser, dbPassword)
   val categoryRepository = new CategoryRepository(databaseService)
-  val categoryController = new CategoryController(categoryRepository)
+  val userRepository = new UserRepository(databaseService)
+
+  val tokenService = new TokenService(userRepository)
+
+  val categoryController = new CategoryController(categoryRepository, tokenService)
   val categorySpecHelper = new CategorySpecHelper(categoryRepository)
 
   val categoriesPath = "/categories"
@@ -70,22 +75,52 @@ class CategoryEndpointSpec extends AsyncWordSpec
       }
     }
 
-    "return NotFound when try to delete a non existent category" in {
-      Delete(s"$categoriesPath/1234567890") ~> categoryController.routes ~> check {
-        status shouldBe StatusCodes.NotFound
+    "return Unauthorized when user try delete category without token an existent category" in {
+      val testUser = User(None, "Marcus", "ma@test.mail", "Ma1234567890")
+      val invalidToken = tokenService.createToken(testUser)
+
+      Delete(s"$categoriesPath/1234567890") ~>
+        addHeader("Authorization", invalidToken) ~> categoryController.routes ~> check {
+
+        status shouldBe StatusCodes.Unauthorized
       }
     }
 
+    "reject request when try to delete a category without token" in {
+      Delete(s"$categoriesPath/1234567890") ~> categoryController.routes ~> check {
+        rejection shouldBe MissingHeaderRejection("Authorization")
+      }
+    }
+
+    "return NotFound when try to delete a non existent category" in {
+      val testUser = User(None, "Marcus", "ma@test.mail", "Ma1234567890")
+      val token = tokenService.createToken(testUser)
+
+      for {
+        user <- userRepository.create(testUser)
+        result <- Delete(s"$categoriesPath/1234567890") ~> addHeader("Authorization", token) ~> categoryController.routes ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+        _ <- userRepository.delete(user.id.get)
+      } yield result
+    }
+
     "return NoContent when delete an existent category" in {
-      categoryRepository.create(categorySpecHelper.category).flatMap { c =>
-        Delete(s"$categoriesPath/${c.id.get}") ~> categoryController.routes ~> check {
+      val testUser = User(None, "Marcus", "ma@test.mail", "Ma1234567890")
+      val token = tokenService.createToken(testUser)
+
+      for {
+        user <- userRepository.create(testUser)
+        category <- categoryRepository.create(categorySpecHelper.category)
+        result <- Delete(s"$categoriesPath/${category.id.get}") ~> addHeader("Authorization", token)~> categoryController.routes ~> check {
           status shouldBe StatusCodes.NoContent
 
-          categoryRepository.findByTitle(c.title).flatMap { cat =>
+          categoryRepository.findByTitle(category.title).flatMap { cat =>
             cat should not be defined
           }
         }
-      }
+        _ <- userRepository.delete(user.id.get)
+      } yield result
     }
   }
 }

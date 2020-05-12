@@ -4,8 +4,14 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import models.{Category, CategoryJson}
 import repositories.CategoryRepository
+import services.TokenService
+import web.directives.VerifyToken
 
-class CategoryController(val categoryRepository: CategoryRepository) extends CategoryJson {
+import scala.concurrent.ExecutionContext
+
+class CategoryController(val categoryRepository: CategoryRepository, val tokenService: TokenService)(implicit val executor: ExecutionContext)
+  extends CategoryJson
+    with VerifyToken {
 
   val routes = pathPrefix("categories") {
     pathEndOrSingleSlash {
@@ -28,9 +34,11 @@ class CategoryController(val categoryRepository: CategoryRepository) extends Cat
     pathPrefix(IntNumber) { id =>
       pathEndOrSingleSlash {
         delete {
-          onSuccess(categoryRepository.delete(id)) {
-            case n if n != 0  => complete(StatusCodes.NoContent)
-            case _ => complete(StatusCodes.NotFound)
+          verifyToken { _ =>
+            onSuccess(categoryRepository.delete(id)) {
+              case n if n != 0  => complete(StatusCodes.NoContent)
+              case _ => complete(StatusCodes.NotFound)
+            }
           }
         }
       }

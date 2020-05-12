@@ -7,10 +7,10 @@ import repositories.{BookRepository, CategoryRepository}
 
 import scala.concurrent.ExecutionContext
 
-class ApiService(categoryRepository: CategoryRepository, bookRepository: BookRepository)
+class ApiService(categoryRepository: CategoryRepository, bookRepository: BookRepository, tokenService: TokenService)
                 (implicit executor: ExecutionContext) {
 
-  val categoryController = new CategoryController(categoryRepository)
+  val categoryController = new CategoryController(categoryRepository, tokenService)
   val bookController = new BookController(bookRepository)
 
   def routes: Route = pathPrefix("api") {
