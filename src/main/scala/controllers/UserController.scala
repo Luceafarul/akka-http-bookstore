@@ -5,8 +5,14 @@ import akka.http.scaladsl.server.Route
 import models.{User, UserJson}
 import repositories.UserRepository
 import akka.http.scaladsl.server.Directives._
+import services.TokenService
+import web.directives.VerifyToken
 
-class UserController(val userRepository: UserRepository) extends UserJson {
+import scala.concurrent.ExecutionContext
+
+class UserController(val userRepository: UserRepository, val tokenService: TokenService)
+                    (implicit val executor: ExecutionContext) extends UserJson with VerifyToken {
+
   val routes: Route = pathPrefix("users") {
     pathEndOrSingleSlash {
       post {
@@ -20,10 +26,9 @@ class UserController(val userRepository: UserRepository) extends UserJson {
     } ~
       pathPrefix(LongNumber) { id =>
         pathEndOrSingleSlash {
-          get {
-            onSuccess(userRepository.findById(id)) {
-              case Some(user) => complete(StatusCodes.OK, user)
-              case None => complete(StatusCodes.NotFound)
+          verifyTokenUser(id) { user =>
+            get {
+              complete(user)
             }
           }
         }

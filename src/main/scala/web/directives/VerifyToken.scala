@@ -21,4 +21,13 @@ trait VerifyToken {
       }
     }
   }
+
+  def verifyTokenUser(userId: Long): Directive1[User] = verifyToken.flatMap { userInToken =>
+    userInToken.id match {
+      case Some(id) =>
+        if (userId == id) provide(userInToken)
+        else complete(StatusCodes.Unauthorized)
+      case None => complete(StatusCodes.Unauthorized)
+    }
+  }
 }
