@@ -12,12 +12,13 @@ final case class Book(id: Option[Long],
                       releaseDate: LocalDate,
                       categoryId: Long,
                       quantity: Int,
+                      price: Double,
                       authors: String)
 
 trait BookJson extends SprayJsonSupport with DefaultJsonProtocol {
   import converters.JsonConverters.LocalDateJsonFormat
 
-  implicit val bookFormat = jsonFormat6(Book.apply)
+  implicit val bookFormat = jsonFormat7(Book.apply)
 }
 
 trait BookTable {
@@ -27,10 +28,11 @@ trait BookTable {
     def releaseDate: Rep[LocalDate] = column[LocalDate]("release_date")
     def categoryId: Rep[Long] = column[Long]("category_id")
     def quantity: Rep[Int] = column[Int]("quantity")
+    def price: Rep[Double] = column[Double]("price_usd")
     def authors: Rep[String] = column[String]("authors")
 
     override def * : ProvenShape[Book] =
-      (id, title, releaseDate, categoryId, quantity, authors) <> ((Book.apply _).tupled, Book.unapply)
+      (id, title, releaseDate, categoryId, quantity, price, authors) <> ((Book.apply _).tupled, Book.unapply)
   }
 
   protected val books = TableQuery[Books]
