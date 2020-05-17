@@ -26,7 +26,7 @@ class BookRepositorySpec extends AsyncWordSpec
   val bookRepository = new BookRepository(databaseService)
 
   def testBook(categoryId: Long): Book =
-    Book(None, "Foundation", LocalDate.of(1951, 7, 17), categoryId, 17, "Isaac Asimov")
+    Book(None, "Foundation", LocalDate.of(1951, 7, 17), categoryId, 17, 12.99, "Isaac Asimov")
 
   "A BookRepository" should {
     "be empty at the beginning" in {

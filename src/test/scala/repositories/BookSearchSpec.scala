@@ -53,7 +53,8 @@ class BookSearchSpec extends AsyncWordSpec
                name: String = "Foundation",
                releaseDate: LocalDate = LocalDate.of(1951, 7, 17),
                author: String = "Isaac Asimov",
-               quantity: Int = 17): Book = Book(None, name, releaseDate, categoryId, quantity, author)
+               price: Double = 12.99,
+               quantity: Int = 17): Book = Book(None, name, releaseDate, categoryId, quantity, price, author)
 
   val sciFiCategory = Category(None, "Sci-Fi")
   val techCategory = Category(None, "Technical")
