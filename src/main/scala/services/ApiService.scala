@@ -2,10 +2,12 @@ package services
 
 import java.time.LocalDate
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.{PredefinedFromStringUnmarshallers, Unmarshaller}
+import akka.stream.Materializer
 import controllers.{AuthController, BookController, CategoryController, UserController}
 import models.search.BookSearch
 import models.{Book, BookJson}
@@ -19,7 +21,11 @@ class ApiService(
                   bookRepository: BookRepository,
                   authRepository: AuthRepository,
                   userRepository: UserRepository,
-                  tokenService: TokenService)(implicit executor: ExecutionContext) extends BookJson
+                  tokenService: TokenService)
+                (
+                  implicit executor: ExecutionContext,
+                  as: ActorSystem,
+                  mat: Materializer) extends BookJson
   with PredefinedFromStringUnmarshallers {
 
   implicit val localDateFromStringUnmarshaller: Unmarshaller[String, Option[LocalDate]] =
@@ -59,7 +65,7 @@ class ApiService(
     }
 
   private def responseWithView(booksFuture: Future[Seq[Book]]): Future[HttpResponse] = {
-    val currencies = List("USD", "EUR")
+    val currencies = CurrencyService.supportedCurrencies
     for {
       categories <- categoryRepository.all
       books <- booksFuture

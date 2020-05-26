@@ -23,8 +23,10 @@ object BookSearchView {
       ),
 
       ul(
-        books.map(book => li(book.title))
+        books.map(book => li(s"${book.title} -- ${formatPrice(book.price)}"))
       )
     )
   ).toString()
+
+  private def formatPrice(price: Double): String = "$%.2f".format(price)
 }
