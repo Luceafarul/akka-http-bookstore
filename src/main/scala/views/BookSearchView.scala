@@ -2,9 +2,14 @@ package views
 
 import models.{Book, Category}
 import scalatags.Text.all._
+import services.CurrencyService
 
 object BookSearchView {
-  def view(categories: Seq[Category], currencies: Seq[String], books: Seq[Book]): String = html(
+  def view(
+            categories: Seq[Category],
+            currencies: Seq[String],
+            books: Seq[Book],
+            currency: String = CurrencyService.baseCurrency): String = html(
     head(
 
     ),
@@ -23,10 +28,13 @@ object BookSearchView {
       ),
 
       ul(
-        books.map(book => li(s"${book.title} -- ${formatPrice(book.price)}"))
+        books.map(book => li(s"${book.title} -- ${formatPrice(book.price, currency)}"))
       )
     )
   ).toString()
 
-  private def formatPrice(price: Double): String = "$%.2f".format(price)
+  private def formatPrice(price: Double, currency: String): String =
+    s"${currencySymbol(currency)}%.2f".format(price)
+
+  private val currencySymbol = Map("USD" -> '$', "EUR" -> '\u20ac')
 }

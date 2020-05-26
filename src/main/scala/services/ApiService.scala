@@ -53,24 +53,39 @@ class ApiService(
           }
         } ~
           post {
-            formFields(("title".?, "releaseDate".as[Option[LocalDate]], "author".?, "categoryId".as[Long].?, "currency".?)) {
-              (title, releaseDate, author, categoryId, _) =>
+            formFields(("title".?, "releaseDate".as[Option[LocalDate]], "author".?, "categoryId".as[Long].?, "currency")) {
+              (title, releaseDate, author, categoryId, currency) =>
                 val bookSearch = BookSearch(title, releaseDate, categoryId, author)
                 complete {
-                  responseWithView(bookRepository.search(bookSearch))
+                  val booksFutureQuery = bookRepository.search(bookSearch)
+
+                  val booksFuture = if (currency != CurrencyService.baseCurrency) {
+                    booksFutureQuery.flatMap { books =>
+                      CurrencyService.rates.map { someRates =>
+                        someRates.fold(books) { rates =>
+                          rates.get(currency).fold(books) { rate =>
+                            books.map(book => book.copy(price = book.price * rate))
+                          }
+                        }
+                      }
+                    }
+                  } else booksFutureQuery
+
+                  responseWithView(booksFuture, currency)
                 }
             }
           }
       }
     }
 
-  private def responseWithView(booksFuture: Future[Seq[Book]]): Future[HttpResponse] = {
+  private def responseWithView(booksFuture: Future[Seq[Book]],
+                               currency: String = CurrencyService.baseCurrency): Future[HttpResponse] = {
     val currencies = CurrencyService.supportedCurrencies
     for {
       categories <- categoryRepository.all
       books <- booksFuture
     } yield {
-      val view = BookSearchView.view(categories, currencies, books)
+      val view = BookSearchView.view(categories, currencies, books, currency)
       HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, view))
     }
   }
