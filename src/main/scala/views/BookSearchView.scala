@@ -1,10 +1,10 @@
 package views
 
-import models.Category
+import models.{Book, Category}
 import scalatags.Text.all._
 
 object BookSearchView {
-  def view(categories: Seq[Category], currencies: Seq[String]): String = html(
+  def view(categories: Seq[Category], currencies: Seq[String], books: Seq[Book]): String = html(
     head(
 
     ),
@@ -20,6 +20,10 @@ object BookSearchView {
         )),
         p(select(name := "currency")(currencies.map(c => option(c)))),
         p(input(`type` := "submit", value := "Submit")),
+      ),
+
+      ul(
+        books.map(book => li(book.title))
       )
     )
   ).toString()

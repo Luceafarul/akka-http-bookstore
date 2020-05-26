@@ -7,12 +7,12 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.unmarshalling.{PredefinedFromStringUnmarshallers, Unmarshaller}
 import controllers.{AuthController, BookController, CategoryController, UserController}
-import models.BookJson
 import models.search.BookSearch
+import models.{Book, BookJson}
 import repositories.{AuthRepository, BookRepository, CategoryRepository, UserRepository}
 import views.BookSearchView
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class ApiService(
                   categoryRepository: CategoryRepository,
@@ -42,19 +42,30 @@ class ApiService(
     pathPrefix("books") {
       pathEndOrSingleSlash {
         get {
-          onSuccess(categoryRepository.all) { category =>
-            complete {
-              HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, BookSearchView.view(category, List("USD"))))
-            }
+          complete {
+            responseWithView(bookRepository.all)
           }
         } ~
           post {
             formFields(("title".?, "releaseDate".as[Option[LocalDate]], "author".?, "categoryId".as[Long].?, "currency".?)) {
               (title, releaseDate, author, categoryId, _) =>
                 val bookSearch = BookSearch(title, releaseDate, categoryId, author)
-                complete(bookRepository.search(bookSearch))
+                complete {
+                  responseWithView(bookRepository.search(bookSearch))
+                }
             }
           }
       }
     }
+
+  private def responseWithView(booksFuture: Future[Seq[Book]]): Future[HttpResponse] = {
+    val currencies = List("USD", "EUR")
+    for {
+      categories <- categoryRepository.all
+      books <- booksFuture
+    } yield {
+      val view = BookSearchView.view(categories, currencies, books)
+      HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, view))
+    }
+  }
 }

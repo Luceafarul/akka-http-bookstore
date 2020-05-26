@@ -8,6 +8,9 @@ val akkaVersion = "2.6.4"
 val akkaHttpVersion = "10.1.11"
 
 Test / parallelExecution := false
+Test / fork := false
+Test / testForkedParallel := false
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
