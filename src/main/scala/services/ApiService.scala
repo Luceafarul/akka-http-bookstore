@@ -15,6 +15,7 @@ import repositories.{AuthRepository, BookRepository, CategoryRepository, UserRep
 import views.BookSearchView
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 class ApiService(
                   categoryRepository: CategoryRepository,
@@ -29,9 +30,11 @@ class ApiService(
   with PredefinedFromStringUnmarshallers {
 
   implicit val localDateFromStringUnmarshaller: Unmarshaller[String, Option[LocalDate]] =
-    Unmarshaller.strict[String, Option[LocalDate]] {
-      case s if s.isEmpty => None
-      case s => Some(LocalDate.parse(s))
+    Unmarshaller.strict[String, Option[LocalDate]] { dateFromString =>
+      Try(LocalDate.parse(dateFromString)) match {
+        case Success(value) => Some(value)
+        case Failure(_) => None
+      }
     }
 
   val categoryController = new CategoryController(categoryRepository, tokenService)
