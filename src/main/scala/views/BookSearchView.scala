@@ -32,7 +32,8 @@ object BookSearchView {
           p(input(`type` := "submit", value := "Submit")),
         ),
 
-        ul(
+        if (books.isEmpty) p("No books were found that matched your criteria.")
+        else ul(
           books.map(book => li(s"${book.title} -- ${formatPrice(book.price, currency)}"))
         )
       )
