@@ -1,6 +1,7 @@
 package services
 
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse}
@@ -15,7 +16,6 @@ import repositories.{AuthRepository, BookRepository, CategoryRepository, UserRep
 import views.BookSearchView
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 
 class ApiService(
                   categoryRepository: CategoryRepository,
@@ -29,11 +29,13 @@ class ApiService(
                   mat: Materializer) extends BookJson
   with PredefinedFromStringUnmarshallers {
 
-  implicit val localDateFromStringUnmarshaller: Unmarshaller[String, Option[LocalDate]] =
-    Unmarshaller.strict[String, Option[LocalDate]] { dateFromString =>
-      Try(LocalDate.parse(dateFromString)) match {
-        case Success(value) => Some(value)
-        case Failure(_) => None
+  implicit val localDateFromStringUnmarshaller: Unmarshaller[String, Either[String, Option[LocalDate]]] =
+    Unmarshaller.strict[String, Either[String, Option[LocalDate]]] {
+      case s if s.isEmpty => Right(None)
+      case s => try {
+        Right(Some(LocalDate.parse(s)))
+      } catch {
+        case _: DateTimeParseException => Left("Invalid date format, please enter a valid one. YYYY-MM-DD")
       }
     }
 
@@ -56,25 +58,32 @@ class ApiService(
           }
         } ~
           post {
-            formFields(("title".?, "releaseDate".as[Option[LocalDate]], "author".?, "categoryId".as[Long].?, "currency")) {
+            formFields(("title".?, "releaseDate".as[Either[String, Option[LocalDate]]], "author".?, "categoryId".as[Long].?, "currency")) {
               (title, releaseDate, author, categoryId, currency) =>
-                val bookSearch = BookSearch(title, releaseDate, categoryId, author)
                 complete {
-                  val booksFutureQuery = bookRepository.search(bookSearch)
+                  releaseDate match {
+                    case Right(value) =>
+                      val bookSearch = BookSearch(title, value, categoryId, author)
 
-                  val booksFuture = if (currency != CurrencyService.baseCurrency) {
-                    booksFutureQuery.flatMap { books =>
-                      CurrencyService.rates.map { someRates =>
-                        someRates.fold(books) { rates =>
-                          rates.get(currency).fold(books) { rate =>
-                            books.map(book => book.copy(price = book.price * rate))
+                      val booksFutureQuery = bookRepository.search(bookSearch)
+
+                      val booksFuture = if (currency != CurrencyService.baseCurrency) {
+                        booksFutureQuery.flatMap { books =>
+                          CurrencyService.rates.map { someRates =>
+                            someRates.fold(books) { rates =>
+                              rates.get(currency).fold(books) { rate =>
+                                books.map(book => book.copy(price = book.price * rate))
+                              }
+                            }
                           }
                         }
-                      }
-                    }
-                  } else booksFutureQuery
+                      } else booksFutureQuery
 
-                  responseWithView(booksFuture, currency)
+                      responseWithView(booksFuture, currency)
+
+                    case Left(value) =>
+                      responseWithView(bookRepository.all, exceptions = List(value))
+                  }
                 }
             }
           }
@@ -82,13 +91,14 @@ class ApiService(
     }
 
   private def responseWithView(booksFuture: Future[Seq[Book]],
-                               currency: String = CurrencyService.baseCurrency): Future[HttpResponse] = {
+                               currency: String = CurrencyService.baseCurrency,
+                               exceptions: List[String] = List.empty): Future[HttpResponse] = {
     val currencies = CurrencyService.supportedCurrencies
     for {
       categories <- categoryRepository.all
       books <- booksFuture
     } yield {
-      val view = BookSearchView.view(categories, currencies, books, currency)
+      val view = BookSearchView.view(categories, currencies, books, currency, exceptions)
       HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, view))
     }
   }
