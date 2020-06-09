@@ -9,7 +9,6 @@ import scala.concurrent.{ExecutionContext, Future}
 class BookRepository(databaseService: DatabaseService) (implicit executor: ExecutionContext)
   extends BookTable {
 
-
   import databaseService._
   import slick.jdbc.PostgresProfile.api._
 
