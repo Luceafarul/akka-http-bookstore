@@ -2,8 +2,8 @@ package services
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import controllers.{AuthController, BookController, CategoryController, UserController}
-import repositories.{AuthRepository, BookRepository, CategoryRepository, UserRepository}
+import controllers.{AuthController, BookController, CategoryController, OrderController, UserController}
+import repositories.{AuthRepository, BookRepository, CategoryRepository, OrderRepository, UserRepository}
 
 import scala.concurrent.ExecutionContext
 
@@ -12,10 +12,12 @@ class ApiService(
                   bookRepository: BookRepository,
                   authRepository: AuthRepository,
                   userRepository: UserRepository,
+                  orderRepository: OrderRepository,
                   tokenService: TokenService)(implicit executor: ExecutionContext) {
 
   val categoryController = new CategoryController(categoryRepository, tokenService)
   val bookController = new BookController(bookRepository)
+  val orderController = new OrderController(orderRepository, tokenService)
   val userController = new UserController(userRepository, tokenService)
   val authController = new AuthController(authRepository, tokenService)
 
@@ -23,6 +25,7 @@ class ApiService(
     authController.routes ~
       userController.routes ~
       categoryController.routes ~
-      bookController.routes
+      bookController.routes ~
+      orderController.routes
   }
 }
